@@ -95,6 +95,7 @@ public class RepositoryMetaAnalyzerTask implements Subscriber {
                 metaComponent.setLatestVersion(model.getLatestVersion());
                 metaComponent.setLastCheck(new Date());
                 qm.synchronizeRepositoryMetaComponent(metaComponent);
+
                 return;
             }
         }

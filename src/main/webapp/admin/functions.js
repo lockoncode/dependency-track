@@ -188,6 +188,7 @@ function notificationAlertDetailFormatter(index, row) {
     let projectAuditChangeChecked = (row.notifyOn.includes("PROJECT_AUDIT_CHANGE") ? 'checked=checked' : "");
     let bomConsumedChecked = (row.notifyOn.includes("BOM_CONSUMED") ? 'checked=checked' : "");
     let bomProcessedChecked = (row.notifyOn.includes("BOM_PROCESSED") ? 'checked=checked' : "");
+    let projectOutdatedDependency = (row.notifyOn.includes("PROJECT_OUTDATED_DEPENDENCY") ? 'checked=checked' : "");
 
     let levelInfoSelected = (row.notificationLevel === "INFORMATIONAL") ? 'selected=selected' : "";
     let levelWarnSelected = (row.notificationLevel === "WARNING") ? 'selected=selected' : "";
@@ -227,6 +228,7 @@ function notificationAlertDetailFormatter(index, row) {
                 <li class="list-group-item"><label style="font-weight:400"><input type="checkbox" ${projectAuditChangeChecked} id="updateNotificationAlertGroupProjectAuditChangeInput-${row.uuid}" data-uuid="${row.uuid}"> PROJECT_AUDIT_CHANGE</label></li>
                 <li class="list-group-item"><label style="font-weight:400"><input type="checkbox" ${bomConsumedChecked} id="updateNotificationAlertGroupBomConsumedInput-${row.uuid}" data-uuid="${row.uuid}"> BOM_CONSUMED</label></li>
                 <li class="list-group-item"><label style="font-weight:400"><input type="checkbox" ${bomProcessedChecked} id="updateNotificationAlertGroupBomProcessedInput-${row.uuid}" data-uuid="${row.uuid}"> BOM_PROCESSED</label></li>
+                <li class="list-group-item"><label style="font-weight:400"><input type="checkbox" ${projectOutdatedDependency} id="updateNotificationAlertGroupProjectOutdatedDependency-${row.uuid}" data-uuid="${row.uuid}"> PROJECT_OUTDATED_DEPENDENCY</label></li>
             </ul>
         `;
     }
@@ -322,7 +324,8 @@ function notificationAlertDetailFormatter(index, row) {
             $("#" + $.escapeSelector("updateNotificationAlertGroupGlobalAuditChangeInput-${row.uuid}")).change($common.debounce(updateNotificationRule, 750));            
             $("#" + $.escapeSelector("updateNotificationAlertGroupProjectAuditChangeInput-${row.uuid}")).change($common.debounce(updateNotificationRule, 750));    
             $("#" + $.escapeSelector("updateNotificationAlertGroupBomConsumedInput-${row.uuid}")).change($common.debounce(updateNotificationRule, 750));    
-            $("#" + $.escapeSelector("updateNotificationAlertGroupBomProcessedInput-${row.uuid}")).change($common.debounce(updateNotificationRule, 750));    
+            $("#" + $.escapeSelector("updateNotificationAlertGroupBomProcessedInput-${row.uuid}")).change($common.debounce(updateNotificationRule, 750));
+            $("#" + $.escapeSelector("updateNotificationAlertGroupProjectOutdatedDependency-${row.uuid}")).change($common.debounce(updateNotificationRule, 750));
         }
         $("#" + $.escapeSelector("updateNotificationAlertNameInput-${row.uuid}")).keydown($common.debounce(updateNotificationRule, 750));
         $("#" + $.escapeSelector("updateNotificationAlertNotificationLevelInput-${row.uuid}")).change($common.debounce(updateNotificationRule, 750));
@@ -362,16 +365,17 @@ function updateNotificationRule() {
     let level               = $("#" + $.escapeSelector("updateNotificationAlertNotificationLevelInput-" + uuid)).val();
     let destination         = $("#" + $.escapeSelector("updateNotificationAlertDestinationInput-" + uuid)).val();
 
-    let datasourceMirroring = $("#" + $.escapeSelector("updateNotificationAlertGroupDatasourceMirroringInput-" + uuid)).is(':checked');
-    let filesystem          = $("#" + $.escapeSelector("updateNotificationAlertGroupFileSystemInput-" + uuid)).is(':checked');
-    let indexingService     = $("#" + $.escapeSelector("updateNotificationAlertGroupIndexingServiceInput-" + uuid)).is(':checked');
-    let repository          = $("#" + $.escapeSelector("updateNotificationAlertGroupRepositoryInput-" + uuid)).is(':checked');
-    let newVulnerability    = $("#" + $.escapeSelector("updateNotificationAlertGroupNewVulnerabilityInput-" + uuid)).is(':checked');
-    let newVulnDependency   = $("#" + $.escapeSelector("updateNotificationAlertGroupNewVulnerableDependencyInput-" + uuid)).is(':checked');
-    let globalAuditChange   = $("#" + $.escapeSelector("updateNotificationAlertGroupGlobalAuditChangeInput-" + uuid)).is(':checked');
-    let projectAuditChange  = $("#" + $.escapeSelector("updateNotificationAlertGroupProjectAuditChangeInput-" + uuid)).is(':checked');
-    let bomConsumed         = $("#" + $.escapeSelector("updateNotificationAlertGroupBomConsumedInput-" + uuid)).is(':checked');
-    let bomProcessed        = $("#" + $.escapeSelector("updateNotificationAlertGroupBomProcessedInput-" + uuid)).is(':checked');
+    let datasourceMirroring        = $("#" + $.escapeSelector("updateNotificationAlertGroupDatasourceMirroringInput-" + uuid)).is(':checked');
+    let filesystem                 = $("#" + $.escapeSelector("updateNotificationAlertGroupFileSystemInput-" + uuid)).is(':checked');
+    let indexingService            = $("#" + $.escapeSelector("updateNotificationAlertGroupIndexingServiceInput-" + uuid)).is(':checked');
+    let repository                 = $("#" + $.escapeSelector("updateNotificationAlertGroupRepositoryInput-" + uuid)).is(':checked');
+    let newVulnerability           = $("#" + $.escapeSelector("updateNotificationAlertGroupNewVulnerabilityInput-" + uuid)).is(':checked');
+    let newVulnDependency          = $("#" + $.escapeSelector("updateNotificationAlertGroupNewVulnerableDependencyInput-" + uuid)).is(':checked');
+    let globalAuditChange          = $("#" + $.escapeSelector("updateNotificationAlertGroupGlobalAuditChangeInput-" + uuid)).is(':checked');
+    let projectAuditChange         = $("#" + $.escapeSelector("updateNotificationAlertGroupProjectAuditChangeInput-" + uuid)).is(':checked');
+    let bomConsumed                = $("#" + $.escapeSelector("updateNotificationAlertGroupBomConsumedInput-" + uuid)).is(':checked');
+    let bomProcessed               = $("#" + $.escapeSelector("updateNotificationAlertGroupBomProcessedInput-" + uuid)).is(':checked');
+    let projectOutdatedDependency  = $("#" + $.escapeSelector("updateNotificationAlertGroupProjectOutdatedDependency-" + uuid)).is(':checked');
 
     let publisherConfig = (destination != null) ? JSON.stringify({ destination: destination }) : null;
     let notifyOn = [];
@@ -385,6 +389,7 @@ function updateNotificationRule() {
     if (projectAuditChange) { notifyOn.push("PROJECT_AUDIT_CHANGE"); }
     if (bomConsumed) { notifyOn.push("BOM_CONSUMED"); }
     if (bomProcessed) { notifyOn.push("BOM_PROCESSED"); }
+    if (projectOutdatedDependency) { notifyOn.push("PROJECT_OUTDATED_DEPENDENCY"); }
 
     $rest.updateNotificationRule(uuid, name, level, publisherConfig, notifyOn, function() {
         $("#notificationAlertTable").bootstrapTable("refresh", {silent: true});

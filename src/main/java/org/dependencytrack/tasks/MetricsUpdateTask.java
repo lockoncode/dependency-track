@@ -21,26 +21,29 @@ package org.dependencytrack.tasks;
 import alpine.event.framework.Event;
 import alpine.event.framework.Subscriber;
 import alpine.logging.Logger;
+import alpine.notification.Notification;
+import alpine.notification.NotificationLevel;
 import alpine.persistence.PaginatedResult;
 import alpine.resources.AlpineRequest;
 import alpine.resources.OrderDirection;
 import alpine.resources.Pagination;
+import com.github.packageurl.PackageURL;
 import org.dependencytrack.event.MetricsUpdateEvent;
 import org.dependencytrack.metrics.Metrics;
-import org.dependencytrack.model.Component;
-import org.dependencytrack.model.ComponentMetrics;
-import org.dependencytrack.model.Dependency;
-import org.dependencytrack.model.DependencyMetrics;
-import org.dependencytrack.model.PortfolioMetrics;
-import org.dependencytrack.model.Project;
-import org.dependencytrack.model.ProjectMetrics;
-import org.dependencytrack.model.Severity;
-import org.dependencytrack.model.Vulnerability;
-import org.dependencytrack.model.VulnerabilityMetrics;
+import org.dependencytrack.model.*;
+import org.dependencytrack.notification.NotificationConstants;
+import org.dependencytrack.notification.NotificationGroup;
+import org.dependencytrack.notification.NotificationScope;
+import org.dependencytrack.notification.vo.BomConsumedOrProcessed;
+import org.dependencytrack.notification.vo.ProjectOutdatedDependency;
 import org.dependencytrack.persistence.QueryManager;
+
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 
@@ -236,12 +239,45 @@ public class MetricsUpdateTask implements Subscriber {
 
         // Retrieve all component dependencies for the project
         final List<Dependency> dependencies = qm.getAllDependencies(project);
-
+        LOGGER.info("Checking dependencies");
         // Iterate through all dependencies
         for (final Dependency dependency: dependencies) {
-
+            LOGGER.info("Processing depdendency " + dependency.getId());
             // Get the component
             final Component component = dependency.getComponent();
+            if(component == null)
+            {
+                LOGGER.warn("unable to get component for dependency " + dependency.getId());
+                continue;
+            }
+            final PackageURL purl = dependency.getComponent().getPurl();
+            if (purl != null) {
+                final RepositoryType type = RepositoryType.resolve(purl);
+                if (RepositoryType.UNSUPPORTED != type) {
+                    final RepositoryMetaComponent repoMetaComponent = qm.getRepositoryMetaComponent(type, purl.getNamespace(), purl.getName());
+                    component.setRepositoryMeta(repoMetaComponent);
+                }
+            }
+            final RepositoryMetaComponent repositoryMetaComponent = component.getRepositoryMeta();
+
+            if(repositoryMetaComponent == null)
+            {
+                LOGGER.warn("unable to load meta component for component " + component.getName());
+                continue;
+            }
+            final Instant currentDate = Instant.now().minus(Duration.ofHours(1));
+
+            if((dependency.getAddedOn().toInstant().isAfter(currentDate) || repositoryMetaComponent.getPublished().toInstant().isAfter(currentDate)) && repositoryMetaComponent.getLatestVersion() != component.getVersion())
+            {
+                LOGGER.info("Found out of date depedency");
+                Notification.dispatch(new Notification()
+                        .scope(NotificationScope.PORTFOLIO)
+                        .group(NotificationGroup.PROJECT_OUTDATED_DEPENDENCY)
+                        .title(NotificationConstants.Title.PROJECT_OUTDATED_DEPENDENCY)
+                        .level(NotificationLevel.INFORMATIONAL)
+                        .content("Project: " + project.getName() + " has outdated dependency " + component.getName()+ " " + component.getVersion() + " vs " + repositoryMetaComponent.getLatestVersion())
+                        .subject(new ProjectOutdatedDependency(project.getName(), component.getName(), component.getVersion(), repositoryMetaComponent.getLatestVersion())));
+            }
 
             // Update the dependency metrics
             final MetricCounters dependencyMetrics = updateDependencyMetrics(qm, dependency.getId());

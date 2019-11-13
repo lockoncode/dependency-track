@@ -24,11 +24,13 @@ import org.dependencytrack.PersistenceCapableTest;
 import org.dependencytrack.notification.NotificationGroup;
 import org.dependencytrack.notification.NotificationScope;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class ConsolePublisherTest extends PersistenceCapableTest {
 
@@ -59,7 +61,8 @@ public class ConsolePublisherTest extends PersistenceCapableTest {
         notification.setContent("This is only a test");
         ConsolePublisher publisher = new ConsolePublisher();
         publisher.inform(notification, null);
-        Assert.assertTrue(outContent.toString().contains(expectedResult(notification)));
+        assertThat(outContent.toString()).isEqualToIgnoringNewLines(expectedResult(notification));
+
     }
 
     @Test
@@ -72,7 +75,7 @@ public class ConsolePublisherTest extends PersistenceCapableTest {
         notification.setContent("This is only a test");
         ConsolePublisher publisher = new ConsolePublisher();
         publisher.inform(notification, null);
-        Assert.assertTrue(errContent.toString().contains(expectedResult(notification)));
+        assertThat(errContent.toString()).isEqualToIgnoringNewLines(expectedResult(notification));
     }
 
     private String expectedResult(Notification notification) {
